@@ -2,8 +2,9 @@ const express = require('express');
 const https = require('https');
 const app = express();
 
-app.use(express.urlencoded({ extended: true }));
+// FORCE EXPLICIT BODY PARSING FOR AFRICA'S TALK FORM DATA
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Safaricom Sandbox Configurations
 const CONSUMER_KEY = "YOUR_SAFARICOM_CONSUMER_KEY";
@@ -89,7 +90,10 @@ async function triggerStkPush(phoneNumber, amount, accountRef) {
 
 // --- USSD APPLICATION LOGIC ---
 app.post('/ussd', (req, res) => {
-    const text = req.body.text || req.query.text || "";
+    // Debug logger to trace inputs directly in Render logs
+    console.log("Incoming USSD request payload body:", req.body);
+
+    const text = req.body.text !== undefined ? req.body.text : (req.query.text || "");
     const phoneNumber = req.body.phoneNumber || req.query.phoneNumber || "";
 
     let response = "";
@@ -102,9 +106,9 @@ app.post('/ussd', (req, res) => {
         formattedPhone = "254" + formattedPhone.slice(1);
     }
 
-    const input = (text ?? "").toString().trim();
+    const input = text.toString().trim();
 
-    if (input === "") {
+    if (input === "" || input === undefined) {
         response = "CON Select Package Type:\n1. Data Bundles\n2. Voice Minutes\n3. SMS Packs";
     } 
     // 1. DATA BUNDLES MAIN MENU
@@ -178,19 +182,7 @@ app.post('/ussd', (req, res) => {
     res.send(response);
 });
 
-// --- M-PESA INSTANT PAYMENT NOTIFICATION (IPN) CALLBACK ---
 app.post('/mpesa-callback', (req, res) => {
-    const callbackData = req.body?.Body?.stkCallback;
-    console.log("Incoming Callback Data Received!");
-
-    if (callbackData && callbackData.ResultCode === 0) {
-        const metadata = callbackData.CallbackMetadata.Item;
-        const amount = metadata.find(item => item.Name === 'Amount').Value;
-        const phone = metadata.find(item => item.Name === 'PhoneNumber').Value;
-        console.log("Payment Successful! Kes " + amount + " from " + phone);
-    } else {
-        console.log("Payment dropped or failed.");
-    }
     res.status(200).send("Callback Received");
 });
 
@@ -198,7 +190,7 @@ app.get('/', (req, res) => {
     res.send("Server is awake and fully responsive!");
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-    console.log("Termux server running cleanly on port " + PORT);
+    console.log("Server running cleanly on port " + PORT);
 });
