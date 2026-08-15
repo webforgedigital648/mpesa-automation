@@ -89,14 +89,17 @@ async function triggerStkPush(phoneNumber, amount, accountRef) {
 }
 
 app.post('/ussd', (req, res) => {
-    const { text, phoneNumber } = req.body;
+    // Read parameters from both body and query for robust network fallback mapping
+    const text = req.body.text || req.query.text || "";
+    const phoneNumber = req.body.phoneNumber || req.query.phoneNumber || "";
+    
     let response = "";
 
-    let formattedPhone = phoneNumber || "";
+    let formattedPhone = phoneNumber.trim();
     if (formattedPhone.startsWith("+")) formattedPhone = formattedPhone.replace("+", "");
     if (formattedPhone.startsWith("0")) formattedPhone = "254" + formattedPhone.slice(1);
 
-    const input = text ? text.trim() : "";
+    const input = text.toString().trim();
 
     if (input === "") {
         response = "CON Select Package Type:\n1. Data Bundles\n2. Voice Minutes\n3. SMS Packs";
@@ -200,3 +203,4 @@ app.get('/', (req, res) => res.send("Server is awake and fully responsive!"));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("Termux server running cleanly on port " + PORT));
+
