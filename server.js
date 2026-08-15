@@ -5,6 +5,7 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// Safaricom Sandbox Configurations
 const CONSUMER_KEY = "YOUR_SAFARICOM_CONSUMER_KEY";
 const CONSUMER_SECRET = "YOUR_SAFARICOM_CONSUMER_SECRET";
 const SHORTCODE = "174379";
@@ -22,10 +23,9 @@ function makeHttpsPost(url, headers, body) {
         };
         const req = https.request(options, (res) => {
             let data = '';
-            res.on('data', (chunk) => data += chunk);
+            res.on('data', (chunk) => { data += chunk; });
             res.on('end', () => {
-                try { resolve(JSON.parse(data)); }
-                catch (e) { reject(e); }
+                try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
             });
         });
         req.on('error', (err) => reject(err));
@@ -41,10 +41,9 @@ function getMpesaToken() {
             headers: { Authorization: "Basic " + auth }
         }, (res) => {
             let data = '';
-            res.on('data', (chunk) => data += chunk);
+            res.on('data', (chunk) => { data += chunk; });
             res.on('end', () => {
-                try { resolve(JSON.parse(data).access_token); }
-                catch (e) { reject(e); }
+                try { resolve(JSON.parse(data).access_token); } catch (e) { reject(e); }
             });
         }).on('error', (err) => reject(err));
     });
@@ -88,94 +87,89 @@ async function triggerStkPush(phoneNumber, amount, accountRef) {
     }
 }
 
+// --- USSD APPLICATION LOGIC ---
 app.post('/ussd', (req, res) => {
-    // Read parameters from both body and query for robust network fallback mapping
     const text = req.body.text || req.query.text || "";
     const phoneNumber = req.body.phoneNumber || req.query.phoneNumber || "";
-    
+
     let response = "";
 
     let formattedPhone = phoneNumber.trim();
-    if (formattedPhone.startsWith("+")) formattedPhone = formattedPhone.replace("+", "");
-    if (formattedPhone.startsWith("0")) formattedPhone = "254" + formattedPhone.slice(1);
+    if (formattedPhone.startsWith("+")) {
+        formattedPhone = formattedPhone.replace("+", "");
+    }
+    if (formattedPhone.startsWith("0")) {
+        formattedPhone = "254" + formattedPhone.slice(1);
+    }
 
-    const input = text.toString().trim();
+    const input = (text ?? "").toString().trim();
 
     if (input === "") {
         response = "CON Select Package Type:\n1. Data Bundles\n2. Voice Minutes\n3. SMS Packs";
-    }
+    } 
+    // 1. DATA BUNDLES MAIN MENU
     else if (input === "1") {
         response = "CON Select Data Bundle:\n1. 50MB (24HR) - KES 5\n2. 150MB (24HR) - KES 10\n3. 1GB (24HR) - KES 99";
-    }
+    } 
+    // Data Bundle Confirmations
     else if (input === "1*1") {
         response = "CON Buy 50MB for KES 5?\n1. Confirm\n2. Cancel";
-    }
-    else if (input === "1*1*1") {
+    } else if (input === "1*1*1") {
         triggerStkPush(formattedPhone, 5, "50MBData");
         response = "END Processing KES 5 payment. Check your phone for the M-Pesa PIN prompt.";
-    }
-    else if (input === "1*2") {
+    } else if (input === "1*2") {
         response = "CON Buy 150MB for KES 10?\n1. Confirm\n2. Cancel";
-    }
-    else if (input === "1*2*1") {
+    } else if (input === "1*2*1") {
         triggerStkPush(formattedPhone, 10, "150MBData");
         response = "END Processing KES 10 payment. Check your phone for the M-Pesa PIN prompt.";
-    }
-    else if (input === "1*3") {
+    } else if (input === "1*3") {
         response = "CON Buy 1GB for KES 99?\n1. Confirm\n2. Cancel";
-    }
-    else if (input === "1*3*1") {
+    } else if (input === "1*3*1") {
         triggerStkPush(formattedPhone, 99, "1GBData");
         response = "END Processing KES 99 payment. Check your phone for the M-Pesa PIN prompt.";
-    }
+    } 
+    // 2. VOICE MINUTES MAIN MENU
     else if (input === "2") {
         response = "CON Select Minutes Package:\n1. 5 Mins (24HR) - KES 5\n2. 12 Mins (24HR) - KES 10\n3. 40 Mins (24HR) - KES 30";
-    }
+    } 
+    // Voice Minute Confirmations
     else if (input === "2*1") {
         response = "CON Buy 5 Mins for KES 5?\n1. Confirm\n2. Cancel";
-    }
-    else if (input === "2*1*1") {
+    } else if (input === "2*1*1") {
         triggerStkPush(formattedPhone, 5, "5MinVoice");
         response = "END Processing KES 5 payment. Check your phone for the M-Pesa PIN prompt.";
-    }
-    else if (input === "2*2") {
+    } else if (input === "2*2") {
         response = "CON Buy 12 Mins for KES 10?\n1. Confirm\n2. Cancel";
-    }
-    else if (input === "2*2*1") {
+    } else if (input === "2*2*1") {
         triggerStkPush(formattedPhone, 10, "12MinVoice");
         response = "END Processing KES 10 payment. Check your phone for the M-Pesa PIN prompt.";
-    }
-    else if (input === "2*3") {
+    } else if (input === "2*3") {
         response = "CON Buy 40 Mins for KES 30?\n1. Confirm\n2. Cancel";
-    }
-    else if (input === "2*3*1") {
+    } else if (input === "2*3*1") {
         triggerStkPush(formattedPhone, 30, "40MinVoice");
         response = "END Processing KES 30 payment. Check your phone for the M-Pesa PIN prompt.";
-    }
+    } 
+    // 3. SMS PACKS MAIN MENU
     else if (input === "3") {
         response = "CON Select SMS Package:\n1. 20 SMS (24HR) - KES 5\n2. 50 SMS (24HR) - KES 10\n3. 200 SMS (24HR) - KES 20";
-    }
+    } 
+    // SMS Pack Confirmations
     else if (input === "3*1") {
         response = "CON Buy 20 SMS for KES 5?\n1. Confirm\n2. Cancel";
-    }
-    else if (input === "3*1*1") {
+    } else if (input === "3*1*1") {
         triggerStkPush(formattedPhone, 5, "20SmsPack");
         response = "END Processing KES 5 payment. Check your phone for the M-Pesa PIN prompt.";
-    }
-    else if (input === "3*2") {
+    } else if (input === "3*2") {
         response = "CON Buy 50 SMS for KES 10?\n1. Confirm\n2. Cancel";
-    }
-    else if (input === "3*2*1") {
+    } else if (input === "3*2*1") {
         triggerStkPush(formattedPhone, 10, "50SmsPack");
         response = "END Processing KES 10 payment. Check your phone for the M-Pesa PIN prompt.";
-    }
-    else if (input === "3*3") {
+    } else if (input === "3*3") {
         response = "CON Buy 200 SMS for KES 20?\n1. Confirm\n2. Cancel";
-    }
-    else if (input === "3*3*1") {
+    } else if (input === "3*3*1") {
         triggerStkPush(formattedPhone, 20, "200SmsPack");
         response = "END Processing KES 20 payment. Check your phone for the M-Pesa PIN prompt.";
-    }
+    } 
     else {
         response = "END Session closed or selection invalid.";
     }
@@ -184,6 +178,7 @@ app.post('/ussd', (req, res) => {
     res.send(response);
 });
 
+// --- M-PESA INSTANT PAYMENT NOTIFICATION (IPN) CALLBACK ---
 app.post('/mpesa-callback', (req, res) => {
     const callbackData = req.body?.Body?.stkCallback;
     console.log("Incoming Callback Data Received!");
@@ -199,8 +194,11 @@ app.post('/mpesa-callback', (req, res) => {
     res.status(200).send("Callback Received");
 });
 
-app.get('/', (req, res) => res.send("Server is awake and fully responsive!"));
+app.get('/', (req, res) => {
+    res.send("Server is awake and fully responsive!");
+});
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Termux server running cleanly on port " + PORT));
-
+app.listen(PORT, () => {
+    console.log("Termux server running cleanly on port " + PORT);
+});
