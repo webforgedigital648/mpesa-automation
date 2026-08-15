@@ -96,14 +96,11 @@ app.post('/ussd', (req, res) => {
     if (formattedPhone.startsWith("+")) formattedPhone = formattedPhone.replace("+", "");
     if (formattedPhone.startsWith("0")) formattedPhone = "254" + formattedPhone.slice(1);
 
-    // Clean tracking logic for menu selections
     const input = text ? text.trim() : "";
 
-    // MAIN MENU
     if (input === "") {
         response = "CON Select Package Type:\n1. Data Bundles\n2. Voice Minutes\n3. SMS Packs";
     }
-    // DATA BUNDLES
     else if (input === "1") {
         response = "CON Select Data Bundle:\n1. 50MB (24HR) - KES 5\n2. 150MB (24HR) - KES 10\n3. 1GB (24HR) - KES 99";
     }
@@ -128,7 +125,6 @@ app.post('/ussd', (req, res) => {
         triggerStkPush(formattedPhone, 99, "1GBData");
         response = "END Processing KES 99 payment. Check your phone for the M-Pesa PIN prompt.";
     }
-    // VOICE MINUTES
     else if (input === "2") {
         response = "CON Select Minutes Package:\n1. 5 Mins (24HR) - KES 5\n2. 12 Mins (24HR) - KES 10\n3. 40 Mins (24HR) - KES 30";
     }
@@ -153,7 +149,6 @@ app.post('/ussd', (req, res) => {
         triggerStkPush(formattedPhone, 30, "40MinVoice");
         response = "END Processing KES 30 payment. Check your phone for the M-Pesa PIN prompt.";
     }
-    // SMS PACKS
     else if (input === "3") {
         response = "CON Select SMS Package:\n1. 20 SMS (24HR) - KES 5\n2. 50 SMS (24HR) - KES 10\n3. 200 SMS (24HR) - KES 20";
     }
